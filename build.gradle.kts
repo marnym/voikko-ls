@@ -29,5 +29,5 @@ tasks.withType<KotlinCompile> {
 }
 
 application {
-    mainClass.set("dev.nyman.voikkols.VoikkoLanguageServerLauncherKt")
+    mainClass.set("dev.nyman.voikkols.MainKt")
 }

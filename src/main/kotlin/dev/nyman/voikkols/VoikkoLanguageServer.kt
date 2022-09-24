@@ -10,15 +10,20 @@ import java.util.concurrent.CompletableFuture
 import kotlin.system.exitProcess
 
 class VoikkoLanguageServer : LanguageServer, LanguageClientAware {
-    var client: LanguageClient? = null
     private val textDocumentService = VoikkoTextDocumentService(this)
     private val workspaceService = VoikkoWorkspaceService()
     private val notebookDocumentService = VoikkoNotebookDocumentService()
+    var client: LanguageClient? = null
     private var errorCode = 1
 
     override fun initialize(params: InitializeParams?): CompletableFuture<InitializeResult> {
-        val initializeResult = InitializeResult(ServerCapabilities())
-        initializeResult.capabilities.textDocumentSync = Either.forLeft(TextDocumentSyncKind.Full)
+        val initializeResult = InitializeResult(ServerCapabilities()).apply {
+            capabilities.apply {
+                codeActionProvider = Either.forLeft(true)
+                textDocumentSync = Either.forLeft(TextDocumentSyncKind.Incremental)
+            }
+        }
+
         return CompletableFuture.completedFuture(initializeResult)
     }
 

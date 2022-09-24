@@ -11,6 +11,7 @@ fun main() {
 fun startServer(input: InputStream, output: OutputStream) {
     val server = VoikkoLanguageServer()
     val launcher = LSPLauncher.createServerLauncher(server, input, output)
+    val startListening = launcher.startListening()
     server.connect(launcher.remoteProxy)
-    launcher.startListening().get()
+    startListening.get()
 }
