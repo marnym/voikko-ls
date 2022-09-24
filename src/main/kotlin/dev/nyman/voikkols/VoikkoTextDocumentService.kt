@@ -4,7 +4,7 @@ import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.puimula.libvoikko.Voikko
 
-class VoikkoTextDocumentService(val server: VoikkoLanguageServer) : TextDocumentService {
+class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : TextDocumentService {
     private val documents: MutableMap<String, TextDocumentItem> = HashMap()
     private val voikko = Voikko(LANGUAGE)
     private val wordParser = WordParser(voikko)

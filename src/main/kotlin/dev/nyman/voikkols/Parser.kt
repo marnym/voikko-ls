@@ -32,17 +32,17 @@ data class Sentence(val text: String, val start: Position) {
     }
 }
 
-interface Parser<T> {
-    fun parse(text: String): List<T>
-}
-
-class WordParser(private val voikko: Voikko) : Parser<Word> {
-    override fun parse(text: String): List<Word> {
+abstract class Parser<T> {
+    fun parse(text: String): List<T> {
         val lines = text.lines()
-        return lines.flatMapIndexed(this::parseLineToWords)
+        return lines.flatMapIndexed(this::parseLines)
     }
 
-    private fun parseLineToWords(lineNumber: Int, line: String): List<Word> {
+    abstract fun parseLines(lineNumber: Int, line: String): List<T>
+}
+
+class WordParser(private val voikko: Voikko) : Parser<Word>() {
+    override fun parseLines(lineNumber: Int, line: String): List<Word> {
         val tokens = voikko.tokens(line)
         val words = tokens
             .filter { it.type == TokenType.WORD }
@@ -57,13 +57,8 @@ class WordParser(private val voikko: Voikko) : Parser<Word> {
     }
 }
 
-class SentenceParser(private val voikko: Voikko) : Parser<Sentence> {
-    override fun parse(text: String): List<Sentence> {
-        val lines = text.lines()
-        return lines.flatMapIndexed(this::parseLineToSentences)
-    }
-
-    private fun parseLineToSentences(lineNumber: Int, line: String): List<Sentence> {
+class SentenceParser(private val voikko: Voikko) : Parser<Sentence>() {
+    override fun parseLines(lineNumber: Int, line: String): List<Sentence> {
         val sentences = voikko.sentences(line)
         var characterPosition = 0
         return sentences.map {
