@@ -1,14 +1,15 @@
 package dev.nyman.voikkols
 
-import org.eclipse.lsp4j.DidChangeTextDocumentParams
-import org.eclipse.lsp4j.DidCloseTextDocumentParams
-import org.eclipse.lsp4j.DidOpenTextDocumentParams
-import org.eclipse.lsp4j.DidSaveTextDocumentParams
-import org.eclipse.lsp4j.TextDocumentItem
+import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.services.TextDocumentService
+import org.puimula.libvoikko.Voikko
 
-class VoikkoTextDocumentService(server: VoikkoLanguageServer) : TextDocumentService {
+class VoikkoTextDocumentService(val server: VoikkoLanguageServer) : TextDocumentService {
     private val documents: MutableMap<String, TextDocumentItem> = HashMap()
+    private val voikko = Voikko(LANGUAGE)
+    private val wordParser = WordParser(voikko)
+    private val sentenceParser = SentenceParser(voikko)
+    private val spellchecker = Spellchecker(voikko)
 
     override fun didOpen(params: DidOpenTextDocumentParams) {
         val document = params.textDocument
@@ -28,17 +29,25 @@ class VoikkoTextDocumentService(server: VoikkoLanguageServer) : TextDocumentServ
         documents.remove(document.uri)
     }
 
-    override fun didSave(params: DidSaveTextDocumentParams?) {
-        TODO("Not yet implemented")
+    override fun didSave(params: DidSaveTextDocumentParams) {
+        val document = documents[params.textDocument.uri] ?: return
+        val words = wordParser.parse(document.text)
+        val sentences = sentenceParser.parse(document.text)
+
+        val invalidWords = words.filterNot(spellchecker::checkSpelling)
+        val grammarErrors = sentences.map(spellchecker::checkGrammar).filter { it.second.isNotEmpty() }
+
+        val wordDiagnostics = invalidWords.map { it.toDiagnostic() }
+        val sentenceDiagnostics = grammarErrors.flatMap { it.first.toDiagnostic(it.second) }
+
+        val diagnostics = wordDiagnostics + sentenceDiagnostics
+
+        server.client?.publishDiagnostics(PublishDiagnosticsParams(document.uri, diagnostics, document.version))
     }
 
     private fun updateDocument(document: TextDocumentItem, params: DidChangeTextDocumentParams): TextDocumentItem {
         document.version = params.textDocument.version
-        for (changes in params.contentChanges) {
-            
-        }
-        document.text
-
+        document.text = params.contentChanges.first().text
         return document
     }
 

@@ -20,7 +20,7 @@ class VoikkoLanguageServer : LanguageServer, LanguageClientAware {
         val initializeResult = InitializeResult(ServerCapabilities()).apply {
             capabilities.apply {
                 codeActionProvider = Either.forLeft(true)
-                textDocumentSync = Either.forLeft(TextDocumentSyncKind.Incremental)
+                textDocumentSync = Either.forLeft(TextDocumentSyncKind.Full)
             }
         }
 
