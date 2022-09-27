@@ -1,5 +1,7 @@
 package dev.nyman.voikkols
 
+import dev.nyman.voikkols.parser.Sentence
+import dev.nyman.voikkols.parser.Word
 import org.puimula.libvoikko.GrammarError
 import org.puimula.libvoikko.Voikko
 

@@ -1,5 +1,6 @@
 package dev.nyman.voikkols
 
+import dev.nyman.voikkols.parser.*
 import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.puimula.libvoikko.Voikko
@@ -22,6 +23,14 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
 
         val updatedDocument = updateDocument(document, params)
         documents[updatedDocument.uri] = updatedDocument
+
+        server.client?.publishDiagnostics(
+            PublishDiagnosticsParams(
+                updatedDocument.uri,
+                diagnostics(updatedDocument),
+                updatedDocument.version
+            )
+        )
     }
 
     override fun didClose(params: DidCloseTextDocumentParams) {
@@ -31,18 +40,14 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
 
     override fun didSave(params: DidSaveTextDocumentParams) {
         val document = documents[params.textDocument.uri] ?: return
-        val words = wordParser.parse(document.text)
-        val sentences = sentenceParser.parse(document.text)
 
-        val invalidWords = words.filterNot(spellchecker::checkSpelling)
-        val grammarErrors = sentences.map(spellchecker::checkGrammar).filter { it.second.isNotEmpty() }
-
-        val wordDiagnostics = invalidWords.map { it.toDiagnostic() }
-        val sentenceDiagnostics = grammarErrors.flatMap { it.first.toDiagnostic(it.second) }
-
-        val diagnostics = wordDiagnostics + sentenceDiagnostics
-
-        server.client?.publishDiagnostics(PublishDiagnosticsParams(document.uri, diagnostics, document.version))
+        server.client?.publishDiagnostics(
+            PublishDiagnosticsParams(
+                document.uri,
+                diagnostics(document),
+                document.version
+            )
+        )
     }
 
     private fun updateDocument(document: TextDocumentItem, params: DidChangeTextDocumentParams): TextDocumentItem {
@@ -51,4 +56,36 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
         return document
     }
 
+    private fun parse(document: TextDocumentItem): Pair<List<Word>, List<Sentence>> =
+        when (document.languageId) {
+            "latex", "tex" -> {
+                val text = LatexParser.parse(document.text).joinToString("\n")
+                Pair(wordParser.parse(text), sentenceParser.parse(text))
+            }
+
+            "text" -> Pair(wordParser.parse(document.text), sentenceParser.parse(document.text))
+
+
+            else -> {
+                server.client?.logMessage(
+                    MessageParams(
+                        MessageType.Error,
+                        "Unknown language identifier ${document.languageId}"
+                    )
+                )
+                Pair(emptyList(), emptyList())
+            }
+        }
+
+    private fun diagnostics(document: TextDocumentItem): List<Diagnostic> {
+        val (words, sentences) = parse(document)
+
+        val invalidWords = words.filterNot(spellchecker::checkSpelling)
+        val grammarErrors = sentences.map(spellchecker::checkGrammar).filter { it.second.isNotEmpty() }
+
+        val wordDiagnostics = invalidWords.map { it.toDiagnostic() }
+        val sentenceDiagnostics = grammarErrors.flatMap { it.first.toDiagnostic(it.second) }
+
+        return wordDiagnostics + sentenceDiagnostics
+    }
 }
