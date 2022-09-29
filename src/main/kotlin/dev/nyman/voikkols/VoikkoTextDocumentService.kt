@@ -59,7 +59,7 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
     private fun parse(document: TextDocumentItem): Pair<List<Word>, List<Sentence>> =
         when (document.languageId) {
             "latex", "tex" -> {
-                val text = LatexParser.parse(document.text).joinToString("\n")
+                val text = LatexParser.parse(document.text).toString()
                 Pair(wordParser.parse(text), sentenceParser.parse(text))
             }
 

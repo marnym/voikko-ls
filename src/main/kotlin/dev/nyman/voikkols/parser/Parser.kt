@@ -13,6 +13,8 @@ data class Word(val text: String, val range: Range) {
 }
 
 data class Sentence(val text: String, val start: Position) {
+    val end = Position(start.line, start.character + text.length - 1)
+
     fun toDiagnostic(grammarErrors: List<GrammarError>): List<Diagnostic> {
         return grammarErrors.map {
             val errorStart = start.character + it.startPos
