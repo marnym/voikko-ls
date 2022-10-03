@@ -56,7 +56,8 @@ data class Sentence(val text: String, val start: Position) {
     }
 
     private fun errorEndPos(grammarError: GrammarError, errorStart: Position): Position {
-        val endPos = grammarError.startPos + grammarError.errorLen
+        // FIXME
+        val endPos = (grammarError.startPos + grammarError.errorLen).coerceAtMost(text.length - 1)
         val beforeEndPos = text.slice(grammarError.startPos..endPos)
         val line = errorStart.line + beforeEndPos.count { it == '\n' }
         val charPosition =
