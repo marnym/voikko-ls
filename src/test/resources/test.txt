@@ -1,0 +1,13 @@
+This is a test file.
+
+It's only purpose is to be tested.
+
+It also contains
+a sentence,
+which spans
+multiple lines.
+
+There can also be multiple sentences. On a single line.
+
+Sentence
+with linebreak. Another sentence after linebreak sentence.

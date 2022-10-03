@@ -6,7 +6,7 @@ import org.eclipse.lsp4j.services.TextDocumentService
 import org.puimula.libvoikko.Voikko
 
 class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : TextDocumentService {
-    private val documents: MutableMap<String, TextDocumentItem> = HashMap()
+    private val documents: MutableMap<String, VoikkoTextDocumentItem> = HashMap()
     private val voikko = Voikko(LANGUAGE)
     private val wordParser = WordParser(voikko)
     private val sentenceParser = SentenceParser(voikko)
@@ -14,7 +14,16 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
 
     override fun didOpen(params: DidOpenTextDocumentParams) {
         val document = params.textDocument
-        documents[document.uri] = document
+        val voikkoDocument = when (document.languageId) {
+            "tex", "latex" -> {
+                val annotatedString = LatexParser.parse(document.text)
+                VoikkoLatexDocumentItem(document, annotatedString)
+            }
+
+            else -> VoikkoTextDocumentItem(document)
+
+        }
+        documents[document.uri] = voikkoDocument
     }
 
     override fun didChange(params: DidChangeTextDocumentParams) {
@@ -27,7 +36,7 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
         server.client?.publishDiagnostics(
             PublishDiagnosticsParams(
                 updatedDocument.uri,
-                diagnostics(updatedDocument),
+                updatedDocument.diagnostics(wordParser, sentenceParser, spellchecker),
                 updatedDocument.version
             )
         )
@@ -44,48 +53,18 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
         server.client?.publishDiagnostics(
             PublishDiagnosticsParams(
                 document.uri,
-                diagnostics(document),
+                document.diagnostics(wordParser, sentenceParser, spellchecker),
                 document.version
             )
         )
     }
 
-    private fun updateDocument(document: TextDocumentItem, params: DidChangeTextDocumentParams): TextDocumentItem {
+    private fun updateDocument(
+        document: VoikkoTextDocumentItem,
+        params: DidChangeTextDocumentParams
+    ): VoikkoTextDocumentItem {
         document.version = params.textDocument.version
         document.text = params.contentChanges.first().text
         return document
-    }
-
-    private fun parse(document: TextDocumentItem): Pair<List<Word>, List<Sentence>> =
-        when (document.languageId) {
-            "latex", "tex" -> {
-                val text = LatexParser.parse(document.text).toString()
-                Pair(wordParser.parse(text), sentenceParser.parse(text))
-            }
-
-            "text" -> Pair(wordParser.parse(document.text), sentenceParser.parse(document.text))
-
-
-            else -> {
-                server.client?.logMessage(
-                    MessageParams(
-                        MessageType.Error,
-                        "Unknown language identifier ${document.languageId}"
-                    )
-                )
-                Pair(emptyList(), emptyList())
-            }
-        }
-
-    private fun diagnostics(document: TextDocumentItem): List<Diagnostic> {
-        val (words, sentences) = parse(document)
-
-        val invalidWords = words.filterNot(spellchecker::checkSpelling)
-        val grammarErrors = sentences.map(spellchecker::checkGrammar).filter { it.second.isNotEmpty() }
-
-        val wordDiagnostics = invalidWords.map { it.toDiagnostic() }
-        val sentenceDiagnostics = grammarErrors.flatMap { it.first.toDiagnostic(it.second) }
-
-        return wordDiagnostics + sentenceDiagnostics
     }
 }
