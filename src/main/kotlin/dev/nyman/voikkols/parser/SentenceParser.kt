@@ -46,29 +46,31 @@ class SentenceParser(private val voikko: Voikko) : Parser<List<Sentence>> {
                         )
                     )
                 } else {
-                    // First case
-                    val emptyParagraphsInBeginning = paragraphs.takeWhile { it.isEmpty() }.size
-                    val whiteSpaceBeforeFirst =
-                        paragraphs.drop(emptyParagraphsInBeginning).first().takeWhile { !it.isLetterOrDigit() }
-                    val firstLine =
-                        if (emptyParagraphsInBeginning == 0) whiteSpaceBeforeFirst.count { it == '\n' } else emptyParagraphsInBeginning * 2
-                    val firstChar =
-                        whiteSpaceBeforeFirst.drop((whiteSpaceBeforeFirst.lastIndexOf('\n') + 1).coerceAtLeast(0)).length
+                    // first case
                     sentences.add(
-                        Pair(
-                            i,
-                            Sentence(
-                                voikko.sentences(paragraphs.drop(emptyParagraphsInBeginning).first())
-                                    .first().text.trim(),
-                                Position(firstLine, firstChar)
-                            )
-                        )
+                        Pair(i, parseFirstSentence(paragraphs))
                     )
                 }
             }
         }
 
         return sentences.map { it.second }
+    }
+
+    private fun parseFirstSentence(paragraphs: List<String>): Sentence {
+        val emptyParagraphsInBeginning = paragraphs.takeWhile { it.isEmpty() }.size
+        val whiteSpaceBeforeFirst =
+            paragraphs.drop(emptyParagraphsInBeginning).first().takeWhile { !it.isLetterOrDigit() }
+        val firstLine =
+            if (emptyParagraphsInBeginning == 0) whiteSpaceBeforeFirst.count { it == '\n' } else emptyParagraphsInBeginning * 2
+        val firstChar =
+            whiteSpaceBeforeFirst.drop((whiteSpaceBeforeFirst.lastIndexOf('\n') + 1).coerceAtLeast(0)).length
+
+        return Sentence(
+            voikko.sentences(paragraphs.drop(emptyParagraphsInBeginning).first())
+                .first().text.trim(),
+            Position(firstLine, firstChar)
+        )
     }
 }
 
