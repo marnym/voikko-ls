@@ -46,7 +46,7 @@ data class Sentence(val text: String, val start: Position) {
     }
 
     private fun errorStartPos(grammarError: GrammarError): Position {
-        val beforeStartPos = text.take(grammarError.startPos + newLinesBefore(grammarError.startPos))
+        val beforeStartPos = text.take(grammarError.startPos)
         val line = start.line + beforeStartPos.count { it == '\n' }
         val charPosition =
             if (line != start.line) beforeStartPos.split("\n").last().length
@@ -57,11 +57,12 @@ data class Sentence(val text: String, val start: Position) {
 
     private fun errorEndPos(grammarError: GrammarError, errorStart: Position): Position {
         val endPos = grammarError.startPos + grammarError.errorLen
-        val beforeEndPos = text.slice(grammarError.startPos + newLinesBefore(grammarError.startPos) .. endPos + newLinesBefore(endPos))
+        val beforeEndPos = text.slice(grammarError.startPos..endPos)
         val line = errorStart.line + beforeEndPos.count { it == '\n' }
         val charPosition =
-            if (line != errorStart.line) beforeEndPos.split("\n").last().length
+            if (line != errorStart.line) beforeEndPos.split("\n").last().trim().length
             else errorStart.character + grammarError.errorLen
+
         return Position(line, charPosition)
     }
 
@@ -75,13 +76,5 @@ data class Sentence(val text: String, val start: Position) {
                 0 + split.last().length - 1
             )
         }
-    }
-
-    private fun newLinesBefore(charPos: Int): Int {
-        val newLines = text
-            .mapIndexed { index, c -> Pair(index, c) }
-            .filter { it.second == '\n' }
-
-        return newLines.count { it.first <= charPos }
     }
 }

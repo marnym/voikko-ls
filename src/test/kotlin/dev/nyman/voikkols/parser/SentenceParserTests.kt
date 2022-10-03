@@ -85,7 +85,7 @@ class SentenceParserTests {
 
         val expected = Range(
             Position(0, 10),
-            Position(0, 30),
+            Position(0, 31),
         )
         val grammarError = spellChecker.checkGrammar(parsed.first())
         val got = grammarError.first.toDiagnostic(grammarError.second)
@@ -94,12 +94,56 @@ class SentenceParserTests {
     }
 
     @Test
-    fun ullakolla1() {
-        val parsed = sentenceParser.parse("Ullakolla\non hiiri joka juoksee karkuun.")
+    fun `ullakolla newline before`() {
+        val parsed = sentenceParser.parse(
+            """
+            Ullakolla
+            on hiiri joka juoksee karkuun.
+            """.trimIndent()
+        )
 
         val expected = Range(
             Position(1, 0),
-            Position(1, 20),
+            Position(1, 21),
+        )
+        val grammarError = spellChecker.checkGrammar(parsed.first())
+        val got = grammarError.first.toDiagnostic(grammarError.second)
+
+        assertEquals(expected, got.first().range)
+    }
+
+    @Test
+    fun `ullakolla newline in middle`() {
+        val parsed = sentenceParser.parse(
+            """
+            Ullakolla on hiiri
+            joka juoksee karkuun.
+            """.trimIndent()
+        )
+
+        val expected = Range(
+            Position(0, 10),
+            Position(1, 12),
+        )
+        val grammarError = spellChecker.checkGrammar(parsed.first())
+        val got = grammarError.first.toDiagnostic(grammarError.second)
+
+        assertEquals(expected, got.first().range)
+    }
+
+    @Test
+    fun `ullakolla newline after`() {
+        val parsed = sentenceParser.parse(
+            """
+            Ullakolla on hiiri joka juoksee
+            karkuun.
+            """.trimIndent()
+        )
+
+        val expected = Range(
+            Position(0, 10),
+            // might be wrong
+            Position(1, 0),
         )
         val grammarError = spellChecker.checkGrammar(parsed.first())
         val got = grammarError.first.toDiagnostic(grammarError.second)
