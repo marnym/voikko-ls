@@ -9,21 +9,66 @@ import org.puimula.libvoikko.Voikko
 
 class SentenceParser(private val voikko: Voikko) : Parser<List<Sentence>> {
     override fun parse(text: String): List<Sentence> {
-        val sentences = voikko.sentences(text)
-        var characterPosition = 0
-        var lineNumber = 0
-        return sentences.map { sentence ->
-            val newSentence = Sentence(
-                sentence.text.trim(),
-                Position(lineNumber, characterPosition)
-            )
+        val lines = text.lines()
+        val paragraphs = text.split("\n\n")
+        val sentences = mutableListOf<Pair<Int, Sentence>>()
 
-            characterPosition += sentence.text.split("\n").last().length
-            lineNumber += sentence.text.count { it == '\n' }
-            if (sentence.text.last() == '\n') characterPosition = 0
+        for ((i, p) in paragraphs.withIndex()) {
+            for (vs in voikko.sentences(p)) {
+                if (sentences.isNotEmpty()) {
+                    // General case
+                    val previousEnd = sentences.last().second.end
 
-            newSentence
+                    val lineAfterPreviousEnd = lines[(previousEnd.line + 1).coerceAtMost(lines.size - 1)]
+                    val startPos = if (i != sentences.last().first) {
+                        // First sentence in paragraph
+                        val startLine = previousEnd.line + 2
+                        val startChar = p.takeWhile { it.isWhitespace() }.length
+                        Position(startLine, startChar)
+                    } else if (previousEnd.line == lines.size - 1 || lineAfterPreviousEnd.isEmpty()) {
+                        val startLine = previousEnd.line
+                        val startChar = previousEnd.character + lines[previousEnd.line].drop(previousEnd.character + 1)
+                            .takeWhile { it.isWhitespace() }.length + 1
+                        Position(startLine, startChar)
+                    } else {
+                        val startLine = previousEnd.line + 1
+                        val startChar = 0
+                        Position(startLine, startChar)
+                    }
+
+                    sentences.add(
+                        Pair(
+                            i,
+                            Sentence(
+                                vs.text,
+                                startPos,
+                            )
+                        )
+                    )
+                } else {
+                    // First case
+                    val emptyParagraphsInBeginning = paragraphs.takeWhile { it.isEmpty() }.size
+                    val whiteSpaceBeforeFirst =
+                        paragraphs.drop(emptyParagraphsInBeginning).first().takeWhile { !it.isLetterOrDigit() }
+                    val firstLine =
+                        if (emptyParagraphsInBeginning == 0) whiteSpaceBeforeFirst.count { it == '\n' } else emptyParagraphsInBeginning * 2
+                    val firstChar =
+                        whiteSpaceBeforeFirst.drop((whiteSpaceBeforeFirst.lastIndexOf('\n') + 1).coerceAtLeast(0)).length
+                    sentences.add(
+                        Pair(
+                            i,
+                            Sentence(
+                                voikko.sentences(paragraphs.drop(emptyParagraphsInBeginning).first())
+                                    .first().text.trim(),
+                                Position(firstLine, firstChar)
+                            )
+                        )
+                    )
+                }
+            }
         }
+
+        return sentences.map { it.second }
     }
 }
 
@@ -69,13 +114,11 @@ data class Sentence(val text: String, val start: Position) {
 
     private fun end(): Position {
         val split = text.split("\n")
-        return if (split.size == 1) {
-            Position(start.line, start.character + text.length - 1)
-        } else {
+        return if (split.size == 1) Position(start.line, start.character + text.length - 1)
+        else
             Position(
                 start.line + split.size - 1,
                 0 + split.last().length - 1
             )
-        }
     }
 }

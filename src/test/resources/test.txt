@@ -11,3 +11,9 @@ There can also be multiple sentences. On a single line.
 
 Sentence
 with linebreak. Another sentence after linebreak sentence.
+
+This is not a sentence
+
+A new sentence starts here.
+
+    Sentence can also have whitespace in beginning.

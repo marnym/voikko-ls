@@ -25,59 +25,142 @@ class SentenceParserTests {
     }
 
     @Test
-    fun parse() {
-        val expected = listOf(
-            Sentence(
-                "This is a test file.",
-                Position(0, 0),
-            ),
-            Sentence(
-                "It's only purpose is to be tested.",
-                Position(2, 0),
-            ),
-            Sentence(
-                "It also contains\na sentence,\nwhich spans\nmultiple lines.",
-                Position(4, 0),
-            ),
-            Sentence(
-                "There can also be multiple sentences.",
-                Position(9, 0),
-            ),
-            Sentence(
-                "On a single line.",
-                Position(9, 38),
-            ),
-            Sentence(
-                "Sentence\nwith linebreak.",
-                Position(11, 0),
-            ),
-            Sentence(
-                "Another sentence after linebreak sentence.",
-                Position(12, 16),
-            ),
+    fun `parse with white space before`() {
+        val expected = Sentence(
+            "Test sentence.",
+            Position(1, 4),
         )
 
-        val sentences = sentenceParser.parse(text)
+        val got = sentenceParser.parse("\n    Test sentence.")
 
-        assertEquals(expected, sentences)
+        assertEquals(expected, got.first())
+    }
+
+
+    @Test
+    fun `parse with empty paragraph before`() {
+        val expected = Sentence(
+            "Test sentence.",
+            Position(2, 4),
+        )
+
+        val got = sentenceParser.parse("\n\n    Test sentence.")
+
+        assertEquals(expected, got.first())
     }
 
     @Test
-    fun end() {
+    fun `parse with multiple sentences on same line`() {
         val expected = listOf(
-            Position(0, 19),
-            Position(2, 33),
-            Position(7, 14),
-            Position(9, 36),
-            Position(9, 54),
-            Position(12, 14),
-            Position(12, 57),
+            Sentence(
+            "Test sentence.",
+            Position(0, 0),
+        ),
+            Sentence(
+                "Another sentence.",
+                Position(0, 15),
+            ),
         )
 
-        val got = sentenceParser.parse(text).map { it.end }
+        val got = sentenceParser.parse("Test sentence. Another sentence.")
 
         assertEquals(expected, got)
     }
+
+    @Test
+    fun `parse with multiple sentences on same paragraph`() {
+        val expected = listOf(
+            Sentence(
+                "Test sentence.",
+                Position(0, 0),
+            ),
+            Sentence(
+                "Another sentence.",
+                Position(1, 0),
+            ),
+        )
+
+        val got = sentenceParser.parse("Test sentence.\nAnother sentence.")
+
+        assertEquals(expected, got)
+    }
+
+    @Test
+    fun `parse with multiple sentences on multiple paragraphs`() {
+        val expected = listOf(
+            Sentence(
+                "Test sentence.",
+                Position(0, 0),
+            ),
+            Sentence(
+                "Another sentence.",
+                Position(2, 0),
+            ),
+        )
+
+        val got = sentenceParser.parse("Test sentence.\n\nAnother sentence.")
+
+        assertEquals(expected, got)
+    }
+
+//    @Test
+//    fun parse() {
+//        val expected = listOf(
+//            Sentence(
+//                "This is a test file.",
+//                Position(0, 0),
+//            ),
+//            Sentence(
+//                "It's only purpose is to be tested.",
+//                Position(2, 0),
+//            ),
+//            Sentence(
+//                "It also contains\na sentence,\nwhich spans\nmultiple lines.",
+//                Position(4, 0),
+//            ),
+//            Sentence(
+//                "There can also be multiple sentences.",
+//                Position(9, 0),
+//            ),
+//            Sentence(
+//                "On a single line.",
+//                Position(9, 38),
+//            ),
+//            Sentence(
+//                "Sentence\nwith linebreak.",
+//                Position(11, 0),
+//            ),
+//            Sentence(
+//                "Another sentence after linebreak sentence.",
+//                Position(12, 16),
+//            ),
+//            Sentence(
+//                "A new sentence starts here",
+//                Position(16, 0),
+//            ),
+//        )
+//
+//        val sentences = sentenceParser.parse(text)
+//
+//        assertEquals(expected, sentences)
+//    }
+//
+//    @Test
+//    fun end() {
+//        val expected = listOf(
+//            Position(0, 19),
+//            Position(2, 33),
+//            Position(7, 14),
+//            Position(9, 36),
+//            Position(9, 54),
+//            Position(12, 14),
+//            Position(12, 57),
+//        )
+//
+//        val got = sentenceParser.parse(text).map { it.end }
+//
+//        assertEquals(expected, got)
+//    }
 
     @Test
     fun ullakolla() {
