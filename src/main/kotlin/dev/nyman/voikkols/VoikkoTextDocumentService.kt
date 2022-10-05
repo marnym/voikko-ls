@@ -14,13 +14,8 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
     override fun didOpen(params: DidOpenTextDocumentParams) {
         val document = params.textDocument
         val voikkoDocument = when (document.languageId) {
-            "tex", "latex" -> {
-                val annotatedString = LatexParser.parse(document.text)
-                VoikkoLatexDocumentItem(document, annotatedString)
-            }
-
+            "tex", "latex" -> VoikkoLatexDocumentItem(document)
             else -> VoikkoTextDocumentItem(document)
-
         }
         documents[document.uri] = voikkoDocument
     }
@@ -59,9 +54,7 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
     }
 
     fun diagnostics(documentItem: VoikkoTextDocumentItem): List<Diagnostic> {
-        val words = wordParser.parse(documentItem.text())
-
-        val spellingErrors = words.filterNot(spellchecker::checkSpelling)
+        val spellingErrors = wordParser.parse(documentItem.text()).filterNot(spellchecker::checkSpelling)
         val grammarErrors = spellchecker.checkGrammar(documentItem.text())
 
         return documentItem.diagnostics(spellingErrors, grammarErrors)

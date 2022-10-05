@@ -42,7 +42,7 @@ open class VoikkoTextDocumentItem(
         return Position(lineNumber, column)
     }
 
-    fun toDiagnostic(grammarError: GrammarError): Diagnostic =
+    private fun toDiagnostic(grammarError: GrammarError): Diagnostic =
         Diagnostic(
             Range(
                 charPosToPosition(grammarError.startPos),
@@ -59,37 +59,38 @@ class VoikkoLatexDocumentItem(
     languageId: String,
     version: Int,
     text: String,
-    var annotatedString: AnnotatedString,
 ) : VoikkoTextDocumentItem(uri, languageId, version, text) {
+    private lateinit var annotatedString: AnnotatedString
+
     constructor(
         textDocumentItem: VoikkoTextDocumentItem,
-        annotatedString: AnnotatedString,
     ) : this(
         textDocumentItem.uri,
         textDocumentItem.languageId,
         textDocumentItem.version,
         textDocumentItem.text,
-        annotatedString,
-    )
+    ) {
+        annotatedString = LatexParser.parse(text)
+    }
 
     constructor(
         textDocumentItem: TextDocumentItem,
-        annotatedString: AnnotatedString,
     ) : this(
         textDocumentItem.uri,
         textDocumentItem.languageId,
         textDocumentItem.version,
         textDocumentItem.text,
-        annotatedString,
-    )
+    ) {
+        annotatedString = LatexParser.parse(text)
+    }
+
+    override fun text(): String = annotatedString.toString()
 
     override fun update(params: DidChangeTextDocumentParams): VoikkoTextDocumentItem {
         super.update(params)
         annotatedString = LatexParser.parse(text)
         return this
     }
-
-    override fun text(): String = annotatedString.toString()
 
     override fun diagnostics(spellingErrors: List<Word>, grammarErrors: List<GrammarError>): List<Diagnostic> {
         val combined = super.diagnostics(spellingErrors, grammarErrors)
