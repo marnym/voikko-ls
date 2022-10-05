@@ -20,14 +20,15 @@ open class VoikkoTextDocumentItem(
         textDocumentItem.text,
     )
 
-    open fun parse(wordParser: WordParser): List<Word> = wordParser.parse(text)
+    open fun text(): String = text
 
-    open fun diagnostics(wordParser: WordParser, spellchecker: Spellchecker): List<Diagnostic> {
-        val words = parse(wordParser)
+    open fun update(params: DidChangeTextDocumentParams): VoikkoTextDocumentItem {
+        version = params.textDocument.version
+        text = params.contentChanges.first().text
+        return this
+    }
 
-        val spellingErrors = words.filterNot(spellchecker::checkSpelling)
-        val grammarErrors = spellchecker.checkGrammar(text)
-
+    open fun diagnostics(spellingErrors: List<Word>, grammarErrors: List<GrammarError>): List<Diagnostic> {
         val spellingDiagnostics = spellingErrors.map { it.toDiagnostic() }
         val grammarDiagnostics = grammarErrors.map(this::toDiagnostic)
 
@@ -35,13 +36,13 @@ open class VoikkoTextDocumentItem(
     }
 
     fun charPosToPosition(charPos: Int): Position {
-        val beforeStart = text.take(charPos)
+        val beforeStart = text().take(charPos)
         val lineNumber = beforeStart.count { it == '\n' }
         val column = beforeStart.takeLastWhile { it != '\n' }.length
         return Position(lineNumber, column)
     }
 
-    private fun toDiagnostic(grammarError: GrammarError): Diagnostic =
+    fun toDiagnostic(grammarError: GrammarError): Diagnostic =
         Diagnostic(
             Range(
                 charPosToPosition(grammarError.startPos),
@@ -82,14 +83,16 @@ class VoikkoLatexDocumentItem(
         annotatedString,
     )
 
-    override fun parse(wordParser: WordParser): List<Word> {
-        val string = LatexParser.parse(text)
-        annotatedString = string
-        return wordParser.parse(string.toString())
+    override fun update(params: DidChangeTextDocumentParams): VoikkoTextDocumentItem {
+        super.update(params)
+        annotatedString = LatexParser.parse(text)
+        return this
     }
 
-    override fun diagnostics(wordParser: WordParser, spellchecker: Spellchecker): List<Diagnostic> {
-        val combined = super.diagnostics(wordParser, spellchecker)
+    override fun text(): String = annotatedString.toString()
+
+    override fun diagnostics(spellingErrors: List<Word>, grammarErrors: List<GrammarError>): List<Diagnostic> {
+        val combined = super.diagnostics(spellingErrors, grammarErrors)
         for (diagnostic in combined)
             diagnostic.range = LatexParser.mapToSource(annotatedString, diagnostic.range)
 

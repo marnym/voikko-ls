@@ -29,13 +29,13 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
         val uri = params.textDocument.uri
         val document = documents[uri] ?: return
 
-        val updatedDocument = updateDocument(document, params)
+        val updatedDocument = document.update(params)
         documents[updatedDocument.uri] = updatedDocument
 
         server.client?.publishDiagnostics(
             PublishDiagnosticsParams(
                 updatedDocument.uri,
-                updatedDocument.diagnostics(wordParser, spellchecker),
+                diagnostics(updatedDocument),
                 updatedDocument.version
             )
         )
@@ -52,18 +52,19 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
         server.client?.publishDiagnostics(
             PublishDiagnosticsParams(
                 document.uri,
-                document.diagnostics(wordParser, spellchecker),
+                diagnostics(document),
                 document.version
             )
         )
     }
 
-    private fun updateDocument(
-        document: VoikkoTextDocumentItem,
-        params: DidChangeTextDocumentParams
-    ): VoikkoTextDocumentItem {
-        document.version = params.textDocument.version
-        document.text = params.contentChanges.first().text
-        return document
+    fun diagnostics(documentItem: VoikkoTextDocumentItem): List<Diagnostic> {
+        val words = wordParser.parse(documentItem.text())
+
+        val spellingErrors = words.filterNot(spellchecker::checkSpelling)
+        val grammarErrors = spellchecker.checkGrammar(documentItem.text())
+
+        return documentItem.diagnostics(spellingErrors, grammarErrors)
     }
+
 }
