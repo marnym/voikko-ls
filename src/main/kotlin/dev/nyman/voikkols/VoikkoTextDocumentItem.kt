@@ -1,14 +1,9 @@
 package dev.nyman.voikkols
 
 import ca.uqac.lif.textidote.`as`.AnnotatedString
-import dev.nyman.voikkols.parser.LatexParser
-import dev.nyman.voikkols.parser.Parser
-import dev.nyman.voikkols.parser.Sentence
-import dev.nyman.voikkols.parser.Word
-import org.eclipse.lsp4j.Diagnostic
-import org.eclipse.lsp4j.TextDocumentItem
-
-typealias ParseResult = Pair<List<Word>, List<Sentence>>
+import dev.nyman.voikkols.parser.*
+import org.eclipse.lsp4j.*
+import org.puimula.libvoikko.GrammarError
 
 open class VoikkoTextDocumentItem(
     uri: String,
@@ -25,29 +20,37 @@ open class VoikkoTextDocumentItem(
         textDocumentItem.text,
     )
 
-    open fun parse(
-        wordParser: Parser<List<Word>>,
-        sentenceParser: Parser<List<Sentence>>
-    ): ParseResult = Pair(
-        wordParser.parse(text),
-        sentenceParser.parse(text),
-    )
+    open fun parse(wordParser: WordParser): List<Word> = wordParser.parse(text)
 
-    open fun diagnostics(
-        wordParser: Parser<List<Word>>,
-        sentenceParser: Parser<List<Sentence>>,
-        spellchecker: Spellchecker,
-    ): List<Diagnostic> {
-        val (words, sentences) = parse(wordParser, sentenceParser)
+    open fun diagnostics(wordParser: WordParser, spellchecker: Spellchecker): List<Diagnostic> {
+        val words = parse(wordParser)
 
-        val invalidWords = words.filterNot(spellchecker::checkSpelling)
-        val grammarErrors = sentences.map(spellchecker::checkGrammar).filter { it.second.isNotEmpty() }
+        val spellingErrors = words.filterNot(spellchecker::checkSpelling)
+        val grammarErrors = spellchecker.checkGrammar(text)
 
-        val wordDiagnostics = invalidWords.map { it.toDiagnostic() }
-        val sentenceDiagnostics = grammarErrors.flatMap { it.first.toDiagnostic(it.second) }
+        val spellingDiagnostics = spellingErrors.map { it.toDiagnostic() }
+        val grammarDiagnostics = grammarErrors.map(this::toDiagnostic)
 
-        return wordDiagnostics + sentenceDiagnostics
+        return spellingDiagnostics + grammarDiagnostics
     }
+
+    fun charPosToPosition(charPos: Int): Position {
+        val beforeStart = text.take(charPos)
+        val lineNumber = beforeStart.count { it == '\n' }
+        val column = beforeStart.takeLastWhile { it != '\n' }.length
+        return Position(lineNumber, column)
+    }
+
+    private fun toDiagnostic(grammarError: GrammarError): Diagnostic =
+        Diagnostic(
+            Range(
+                charPosToPosition(grammarError.startPos),
+                charPosToPosition(grammarError.startPos + grammarError.errorLen),
+            ),
+            grammarError.shortDescription,
+            DiagnosticSeverity.Hint,
+            "voikko",
+        )
 }
 
 class VoikkoLatexDocumentItem(
@@ -79,24 +82,14 @@ class VoikkoLatexDocumentItem(
         annotatedString,
     )
 
-    override fun parse(
-        wordParser: Parser<List<Word>>,
-        sentenceParser: Parser<List<Sentence>>
-    ): ParseResult {
+    override fun parse(wordParser: WordParser): List<Word> {
         val string = LatexParser.parse(text)
         annotatedString = string
-        return Pair(
-            wordParser.parse(string.toString()),
-            sentenceParser.parse(string.toString())
-        )
+        return wordParser.parse(string.toString())
     }
 
-    override fun diagnostics(
-        wordParser: Parser<List<Word>>,
-        sentenceParser: Parser<List<Sentence>>,
-        spellchecker: Spellchecker
-    ): List<Diagnostic> {
-        val combined = super.diagnostics(wordParser, sentenceParser, spellchecker)
+    override fun diagnostics(wordParser: WordParser, spellchecker: Spellchecker): List<Diagnostic> {
+        val combined = super.diagnostics(wordParser, spellchecker)
         for (diagnostic in combined)
             diagnostic.range = LatexParser.mapToSource(annotatedString, diagnostic.range)
 

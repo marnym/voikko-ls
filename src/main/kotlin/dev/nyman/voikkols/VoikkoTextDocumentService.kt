@@ -9,7 +9,6 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
     private val documents: MutableMap<String, VoikkoTextDocumentItem> = HashMap()
     private val voikko = Voikko(LANGUAGE)
     private val wordParser = WordParser(voikko)
-    private val sentenceParser = SentenceParser(voikko)
     private val spellchecker = Spellchecker(voikko)
 
     override fun didOpen(params: DidOpenTextDocumentParams) {
@@ -36,7 +35,7 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
         server.client?.publishDiagnostics(
             PublishDiagnosticsParams(
                 updatedDocument.uri,
-                updatedDocument.diagnostics(wordParser, sentenceParser, spellchecker),
+                updatedDocument.diagnostics(wordParser, spellchecker),
                 updatedDocument.version
             )
         )
@@ -53,7 +52,7 @@ class VoikkoTextDocumentService(private val server: VoikkoLanguageServer) : Text
         server.client?.publishDiagnostics(
             PublishDiagnosticsParams(
                 document.uri,
-                document.diagnostics(wordParser, sentenceParser, spellchecker),
+                document.diagnostics(wordParser, spellchecker),
                 document.version
             )
         )
