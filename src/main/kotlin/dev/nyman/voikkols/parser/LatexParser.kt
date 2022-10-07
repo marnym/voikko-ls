@@ -8,7 +8,10 @@ import org.eclipse.lsp4j.Position as LspPosition
 import org.eclipse.lsp4j.Range as LspRange
 
 object LatexParser : Parser<AnnotatedString> {
-    private val cleaner = LatexCleaner()
+    private val cleaner = LatexCleaner().apply {
+        setIgnoreBeforeDocument(false)
+    }
+
 
     override fun parse(text: String): AnnotatedString {
         val annotatedString = AnnotatedString.read(Scanner(text))
