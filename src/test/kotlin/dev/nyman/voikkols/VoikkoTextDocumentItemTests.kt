@@ -59,6 +59,5 @@ class VoikkoTextDocumentItemTests {
         val got = voikkoTextDocumentItem.charPosToPosition(33)
 
         assertEquals(expected, got)
-
     }
 }

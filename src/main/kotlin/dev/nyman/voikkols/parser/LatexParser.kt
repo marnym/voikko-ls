@@ -12,7 +12,6 @@ object LatexParser : Parser<AnnotatedString> {
         setIgnoreBeforeDocument(false)
     }
 
-
     override fun parse(text: String): AnnotatedString {
         val annotatedString = AnnotatedString.read(Scanner(text))
         return cleaner.clean(annotatedString)
